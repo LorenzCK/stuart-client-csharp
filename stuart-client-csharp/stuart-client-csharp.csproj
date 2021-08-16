@@ -4,17 +4,22 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>StuartDelivery</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>Robert Zagórski</Authors>
-    <Company>OrderYOYO, Stuart</Company>
-    <Product>Stuart csharp client</Product>
-    <Description>Stuart csharp client</Description>
-    <PackageReleaseNotes>Change DataTime to DataTimeOffset for better time zones handling.
-Small cosmetic changes.</PackageReleaseNotes>
+    <Authors>Robert Zagórski, Lorenz Cuno Klopfenstein</Authors>
+    <Company></Company>
+    <Product>stuart-connector</Product>
+    <Description>.NET connector for the Stuart delivery service.
+Temporary updated version derived from the original stuart-client-csharp package.</Description>
+    <PackageReleaseNotes>Added webhook API support.
+Refactored API initialization.
+Minor bugfixes over 1.3.4.</PackageReleaseNotes>
     <PackageTags>stuart delivery</PackageTags>
-    <PackageLicenseUrl>https://github.com/StuartApp/stuart-client-csharp/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/StuartApp/stuart-client-csharp</PackageProjectUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/LorenzCK/stuart-client-csharp</PackageProjectUrl>
     <NeutralLanguage>en</NeutralLanguage>
-    <Version>1.3.4</Version>
+    <Version>2.0.0</Version>
+    <PackageId>stuart-connector</PackageId>
+    <RepositoryUrl>https://github.com/LorenzCK/stuart-client-csharp/blob/master/LICENSE</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
