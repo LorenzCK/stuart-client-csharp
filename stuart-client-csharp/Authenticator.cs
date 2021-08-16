@@ -8,41 +8,77 @@ namespace StuartDelivery
 {
     public class Authenticator
     {
-        private readonly WebClient _webClient;
         private readonly Environment _environment;
+
         private OAuth2AccessToken _oAuth2AccessToken;
 
         private readonly string _clientId;
         private readonly string _clientSecret;
 
-        public Authenticator(Environment environment, string apiClientId, string apiClientSecret)
+        public Environment Environment
         {
-            _webClient = new WebClient(environment);
-            _environment = environment;
-            _clientId = apiClientId;
-            _clientSecret = apiClientSecret;
+            get {
+                return _environment;
+            }
         }
 
-        public async Task<string> GetAccessToken()
+        public Authenticator(Environment environment, string apiClientId, string apiClientSecret)
+            : this(environment, apiClientId, apiClientSecret, null, null)
         {
-            if (_oAuth2AccessToken != null && !_oAuth2AccessToken.IsExpired)
-                return _oAuth2AccessToken.AccessToken;
 
-            _oAuth2AccessToken = await GetNewAccessTokenAsync().ConfigureAwait(false);
+        }
+
+        public Authenticator(Environment environment, string apiClientId, string apiClientSecret, string authToken)
+            : this(environment, apiClientId, apiClientSecret, authToken, null)
+        {
+            
+        }
+
+        public Authenticator(Environment environment, string apiClientId, string apiClientSecret, string authToken, DateTime? tokenExpiration)
+        {
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _clientId = apiClientId ?? throw new ArgumentNullException(nameof(apiClientId));
+            _clientSecret = apiClientSecret ?? throw new ArgumentNullException(nameof(apiClientSecret));
+
+            if(authToken != null) {
+                _oAuth2AccessToken = new OAuth2AccessToken {
+                    AccessToken = authToken,
+                    ExpireDate = tokenExpiration.GetValueOrDefault(DateTime.MaxValue) // Assume token never expires if not set
+                };
+            }
+        }
+
+        public virtual async Task<string> GetAccessToken()
+        {
+            if(_oAuth2AccessToken == null || _oAuth2AccessToken.IsExpired) {
+                await RefreshAuthToken();
+            }
+
             return _oAuth2AccessToken.AccessToken;
         }
 
-        public async Task<OAuth2AccessToken> GetNewAccessTokenAsync()
+        public bool HasValidToken
         {
-            var tokenRequest = new TokenRequest
+            get
             {
+                return _oAuth2AccessToken != null && !_oAuth2AccessToken.IsExpired;
+            }
+        }
+
+        public async Task RefreshAuthToken()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/oauth/token");
+            request.AddData(new TokenRequest {
                 ClientId = _clientId,
                 ClientSecret = _clientSecret,
                 Scope = "api",
                 GrantType = "client_credentials"
-            };
+            });
 
-            var response = await _webClient.PostAsync("/oauth/token", tokenRequest).ConfigureAwait(false);
+            var client = new HttpClient { BaseAddress = new Uri(_environment.BaseUrl) };
+            client.SetUserAgent();
+
+            var response = await client.SendAsync(request).ConfigureAwait(false);
 
             TokenSuccessResponse tokenResponse;
             if (response.IsSuccessStatusCode)
@@ -50,13 +86,16 @@ namespace StuartDelivery
             else
                 throw new HttpRequestException($"Access token request failed with message: {response.Content.ReadAsAsync<ErrorResponse>().Result.ErrorDescription}");
 
-            return new OAuth2AccessToken()
-            {
+            var createdAt = DateTimeOffset.FromUnixTimeSeconds(tokenResponse.CreatedAt);
+            var expiresAt = createdAt.AddSeconds(tokenResponse.ExpiresIn);
+
+            _oAuth2AccessToken = new OAuth2AccessToken() {
                 AccessToken = tokenResponse.AccessToken,
-                ExpireDate = DateTime.UtcNow.AddMinutes(tokenResponse.ExpiresIn),
+                ExpireDate = expiresAt.UtcDateTime,
                 Scope = tokenResponse.Scope,
                 TokenType = tokenResponse.TokenType
             };
         }
+
     }
 }

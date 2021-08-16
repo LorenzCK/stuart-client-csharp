@@ -10,58 +10,60 @@ namespace StuartDelivery
     public class WebClient
     {
         private readonly HttpClient _client;
+        private readonly Authenticator _authenticator;
 
-        public WebClient(Environment environment)
+        public Authenticator Authenticator
         {
-            _client = new HttpClient { BaseAddress = new Uri($"{environment.BaseUrl}") };
-            _client.DefaultRequestHeaders.Add("User-Agent", "stuart-client-csharp/1.3.1");
+            get
+            {
+                return _authenticator;
+            }
         }
 
-        public void SetAuthorization(string token)
+        public WebClient(Authenticator authenticator)
         {
-            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _authenticator = authenticator;
+
+            _client = new HttpClient { BaseAddress = new Uri(authenticator.Environment.BaseUrl) };
+            _client.SetUserAgent();
         }
 
         public async Task<HttpResponseMessage> GetAsync(string uri)
         {
-            return await _client.SendAsync(CreateRequest(HttpMethod.Get, uri, null));
+            return await _client.SendAsync(await CreateRequest(HttpMethod.Get, uri, null));
         }
 
         public async Task<HttpResponseMessage> PostAsync<TModel>(string uri, TModel model)
         {
-            return await _client.SendAsync(CreateRequest(HttpMethod.Post, uri, model));
+            return await _client.SendAsync(await CreateRequest(HttpMethod.Post, uri, model));
         }
 
         public async Task<HttpResponseMessage> PostAsync(string uri)
         {
-            return await _client.SendAsync(CreateRequest(HttpMethod.Post, uri, null));
+            return await _client.SendAsync(await CreateRequest(HttpMethod.Post, uri, null));
         }
 
         public async Task<HttpResponseMessage> PutAsync<TModel>(string uri, TModel model)
         {
-            return await _client.SendAsync(CreateRequest(HttpMethod.Put, uri, model));
+            return await _client.SendAsync(await CreateRequest(HttpMethod.Put, uri, model));
         }
 
         public async Task<HttpResponseMessage> PatchAsync<TModel>(string uri, TModel model)
         {
-            return await _client.SendAsync(CreateRequest(new HttpMethod("PATCH"), uri, model));
+            return await _client.SendAsync(await CreateRequest(new HttpMethod("PATCH"), uri, model));
         }
 
         public async Task<HttpResponseMessage> DeleteAsync(string uri)
         {
-            return await _client.SendAsync(CreateRequest(HttpMethod.Delete, uri, null));
+            return await _client.SendAsync(await CreateRequest(HttpMethod.Delete, uri, null));
         }
 
-        private HttpRequestMessage CreateRequest(HttpMethod method, string uri, object data)
+        private async Task<HttpRequestMessage> CreateRequest(HttpMethod method, string uri, object data)
         {
             var request = new HttpRequestMessage(method, uri);
-            if (data != null)
-            {
-                request.Content = new ObjectContent(data.GetType(), data, new JsonMediaTypeFormatter
-                {
-                    SerializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }
-                });
-            }
+            request.AddData(data);
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _authenticator.GetAccessToken());
 
             return request;
         }
